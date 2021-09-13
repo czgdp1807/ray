@@ -129,6 +129,12 @@ parser.add_argument(
     default=False,
     action="store_true",
     help="True if Ray debugger is made available externally.")
+parser.add_argument(
+    "--redirect-worker-output",
+    default=True,
+    action="store_true",
+    help=("True if the stdout and stderr of worker processes "
+          "should be redirected to files."))
 
 if __name__ == "__main__":
     # NOTE(sang): For some reason, if we move the code below
@@ -177,6 +183,7 @@ if __name__ == "__main__":
         raylet_socket_name=args.raylet_name,
         temp_dir=args.temp_dir,
         metrics_agent_port=args.metrics_agent_port,
+        redirect_worker_output=args.redirect_worker_output
     )
 
     node = ray.node.Node(
