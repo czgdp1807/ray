@@ -26,6 +26,17 @@
 #include "ray/util/process.h"
 #include "ray/util/util.h"
 
+#include <stdio.h>
+#include <Windows.h>
+#include <exception>
+
+class AccessViolationException {
+};
+
+void ray_se_translator(unsigned int, struct _EXCEPTION_POINTERS*) {
+  throw AccessViolationException();
+}
+
 namespace ray {
 namespace core {
 
@@ -2206,11 +2217,17 @@ Status CoreWorker::ExecuteTask(const TaskSpecification &task_spec,
 
   std::shared_ptr<LocalMemoryBuffer> creation_task_exception_pb_bytes = nullptr;
 
-  status = options_.task_execution_callback(
-      task_type, task_spec.GetName(), func,
-      task_spec.GetRequiredResources().GetResourceMap(), args, arg_refs, return_ids,
-      task_spec.GetDebuggerBreakpoint(), return_objects, creation_task_exception_pb_bytes,
-      is_application_level_error);
+  _set_se_translator(ray_se_translator);
+  try {
+    status = options_.task_execution_callback(
+        task_type, task_spec.GetName(), func,
+        task_spec.GetRequiredResources().GetResourceMap(), args, arg_refs, return_ids,
+        task_spec.GetDebuggerBreakpoint(), return_objects, creation_task_exception_pb_bytes,
+        is_application_level_error);
+  }
+  catch(AccessViolationException) {
+    RAY_LOG(ERROR)<< "Encountered exception access violation";
+  }
 
   // Get the reference counts for any IDs that we borrowed during this task and
   // return them to the caller. This will notify the caller of any IDs that we
